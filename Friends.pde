@@ -9,7 +9,7 @@ static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
 static int dotProbabilty = 100;
-static int clumpThreshold = 1;
+static int clumpThreshold = 3;
 static int maxAttractionDistance = widthActual/6;
 // static boolean clumpMode = false; DEPRICATED
 ////////////////////////////////////////////////////
@@ -18,7 +18,7 @@ static int maxAttractionDistance = widthActual/6;
 public int widthScaled = scale * widthActual;
 public ArrayList<Friend> friends = new ArrayList();
 public HashSet<Integer> usedIDs= new HashSet();
-public int[][] mapMemory = new int[widthActual][widthActual];
+public HashSet<Friend>[][] mapMemory = new HashSet[widthActual][widthActual];
 
 public class Friend{
   Integer id;
@@ -50,9 +50,11 @@ void setup() {
   
   for(int i = 0; i < widthActual; i++){
     for(int j = 0; j < widthActual; j++){
+      mapMemory[i][j] = new HashSet<Friend>();
       if (int(random(dotProbabilty)) == 0){
-        friends.add(new Friend(i,j));
-        mapMemory[i][j]++;
+        Friend friend = new Friend(i,j);
+        friends.add(friend);
+        mapMemory[i][j].add(friend);
       }
     }
   }
@@ -66,6 +68,8 @@ void draw() {
   if (!drawPath) background(#ffffff);
   friends = getNewPositions(friends);
   drawFriends();
+  
+  //saveFrame("frames/####.tif");
 }
 
 public void drawFriends() {
@@ -99,9 +103,11 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
     */
     ArrayList<Float> angles = new ArrayList();
     ArrayList<Float> weights = new ArrayList();
+    /* DEPRICATED
     int friendsInSameSpaceCounter = 0;
+    */
     for(int j = 0; j < friends.size(); j++){
-      if (friend == friends.get(j)){ continue; }
+      if (friend == friends.get(j)) continue; 
       /* DEPRICATED
       if (clumpMode == true && friendsInSameSpaceCounter >= clumpThreshold) { // if too many friends occupying a single space, clump them and stop moving
         friend.clumped = true;
@@ -109,14 +115,16 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
       }
       */
       Friend otherFriend = friends.get(j);
-      float angle = atan2(friend.y - otherFriend.y, otherFriend.x - friend.x);
       float distance = sqrt(pow(otherFriend.x - friend.x, 2) + pow(otherFriend.y - friend.y, 2));
       if (distance == 0f){
+        /* DEPRICATED
         friendsInSameSpaceCounter++;
+        */
         continue;
       } else if (distance > maxAttractionDistance){
         continue;
       }
+      float angle = atan2(friend.y - otherFriend.y, otherFriend.x - friend.x);
       angles.add(angle);
       weights.add((widthActual*2)-distance);
       //weights.add(pow(2,(1/distance)));
@@ -131,55 +139,55 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
     }
     // right 
     else if (mean <= 22.5f) { 
-      if (mapMemory[friend.x+1][friend.y] >= clumpThreshold) continue;
+      if (mapMemory[friend.x+1][friend.y].size() >= clumpThreshold) continue;
       friend.x++;
     } 
     // up-right 
     else if (mean <= 67.5f) {
-      if (mapMemory[friend.x+1][friend.y-1] >= clumpThreshold) continue;
+      if (mapMemory[friend.x+1][friend.y-1].size() >= clumpThreshold) continue;
       friend.x++;
       friend.y--;
     }
     // up
     else if (mean <= 112.5f) {
-      if (mapMemory[friend.x][friend.y-1] >= clumpThreshold) continue;
+      if (mapMemory[friend.x][friend.y-1].size() >= clumpThreshold) continue;
       friend.y--;
     }
     // up-left
     else if (mean <= 157.5) {
-      if (mapMemory[friend.x-1][friend.y-1] >= clumpThreshold) continue;
+      if (mapMemory[friend.x-1][friend.y-1].size() >= clumpThreshold) continue;
       friend.x--;
       friend.y--;
     }
     // left
     else if (mean <= 202.5) {
-      if (mapMemory[friend.x-1][friend.y] >= clumpThreshold) continue;
+      if (mapMemory[friend.x-1][friend.y].size() >= clumpThreshold) continue;
       friend.x--;
     }
     // down-left
     else if (mean <= 247.5) {
-      if (mapMemory[friend.x-1][friend.y+1] >= clumpThreshold) continue;
+      if (mapMemory[friend.x-1][friend.y+1].size() >= clumpThreshold) continue;
       friend.x--;
       friend.y++;
     }
     // down
     else if (mean <= 292.5) {
-      if (mapMemory[friend.x][friend.y+1] >= clumpThreshold) continue;
+      if (mapMemory[friend.x][friend.y+1].size() >= clumpThreshold) continue;
       friend.y++;
     } 
     // down-right
     else if (mean <= 337.5) {
-      if (mapMemory[friend.x+1][friend.y+1] >= clumpThreshold) continue;
+      if (mapMemory[friend.x+1][friend.y+1].size() >= clumpThreshold) continue;
       friend.x++;
       friend.y++;
     }
     // right (again)
     else if (mean <= 360) {
-      if (mapMemory[friend.x+1][friend.y] >= clumpThreshold) continue;
+      if (mapMemory[friend.x+1][friend.y].size() >= clumpThreshold) continue;
       friend.x++;
     }
-    mapMemory[oldX][oldY]--;
-    mapMemory[friend.x][friend.y]++;
+    mapMemory[oldX][oldY].remove(friend);
+    mapMemory[friend.x][friend.y].add(friend);
   }
   return friends;
 }
