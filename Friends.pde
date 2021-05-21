@@ -9,7 +9,7 @@ static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
 static int dotProbabilty = 100;
-static int clumpThreshold = 5;
+static int clumpThreshold = 1;
 static int maxAttractionDistance = widthActual/6;
 // static boolean clumpMode = false; DEPRICATED
 ////////////////////////////////////////////////////
@@ -18,6 +18,7 @@ static int maxAttractionDistance = widthActual/6;
 public int widthScaled = scale * widthActual;
 public ArrayList<Friend> friends = new ArrayList();
 public HashSet<Integer> usedIDs= new HashSet();
+public int[][] mapMemory = new int[widthActual][widthActual];
 
 public class Friend{
   Integer id;
@@ -51,6 +52,7 @@ void setup() {
     for(int j = 0; j < widthActual; j++){
       if (int(random(dotProbabilty)) == 0){
         friends.add(new Friend(i,j));
+        mapMemory[i][j]++;
       }
     }
   }
@@ -120,6 +122,8 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
       //weights.add(pow(2,(1/distance)));
     }
     float mean = circular_mean(angles, weights);
+    int oldX = friend.x;
+    int oldY = friend.y; 
     
     // do nothing if no friends nearby
     if (angles.size() == 0) {
@@ -127,44 +131,55 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
     }
     // right 
     else if (mean <= 22.5f) { 
+      if (mapMemory[friend.x+1][friend.y] >= clumpThreshold) continue;
       friend.x++;
     } 
     // up-right 
     else if (mean <= 67.5f) {
+      if (mapMemory[friend.x+1][friend.y-1] >= clumpThreshold) continue;
       friend.x++;
       friend.y--;
     }
     // up
     else if (mean <= 112.5f) {
+      if (mapMemory[friend.x][friend.y-1] >= clumpThreshold) continue;
       friend.y--;
     }
     // up-left
     else if (mean <= 157.5) {
+      if (mapMemory[friend.x-1][friend.y-1] >= clumpThreshold) continue;
       friend.x--;
       friend.y--;
     }
     // left
     else if (mean <= 202.5) {
+      if (mapMemory[friend.x-1][friend.y] >= clumpThreshold) continue;
       friend.x--;
     }
     // down-left
     else if (mean <= 247.5) {
+      if (mapMemory[friend.x-1][friend.y+1] >= clumpThreshold) continue;
       friend.x--;
       friend.y++;
     }
     // down
     else if (mean <= 292.5) {
+      if (mapMemory[friend.x][friend.y+1] >= clumpThreshold) continue;
       friend.y++;
     } 
     // down-right
     else if (mean <= 337.5) {
+      if (mapMemory[friend.x+1][friend.y+1] >= clumpThreshold) continue;
       friend.x++;
       friend.y++;
     }
     // right (again)
     else if (mean <= 360) {
+      if (mapMemory[friend.x+1][friend.y] >= clumpThreshold) continue;
       friend.x++;
-    }      
+    }
+    mapMemory[oldX][oldY]--;
+    mapMemory[friend.x][friend.y]++;
   }
   return friends;
 }
