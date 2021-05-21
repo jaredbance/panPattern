@@ -1,69 +1,81 @@
 import java.util.*;
 
-public int scale = 4;
-public int widthActual = 100;
+static int scale = 4;
+static int widthActual = 200;
+static boolean drawPath = false;
+static boolean slowMode = false;
+static int slowModeFrameRate = 5;
+static int dotProbabilty = 100;
+static int clumpThreshold = 5;
+static int maxAttractionDistance = widthActual/6;
+
 public int widthScaled = scale * widthActual;
-public Boolean[][] friends;
+public ArrayList<Friend> friends = new ArrayList();
+public HashSet<Integer> usedIDs= new HashSet();
+
+public class Friend{
+  Integer id;
+  int x;
+  int y;
+  boolean clumped = false;
+  public Friend(int x, int y){
+    id = int(random(1000000));
+    while(usedIDs.contains(id)){
+      id = int(random(1000000));
+    }
+    usedIDs.add(id);  
+    this.x = x;
+    this.y = y;
+  }
+}
 
 void settings(){
   size(widthScaled, widthScaled);
 }
 
 void setup() {
-  
   scale(scale);
-  //frameRate(60);
+  if (slowMode) frameRate(slowModeFrameRate);
   background(#ffffff);
   //strokeWeight(0.6);
   
-  friends = new Boolean[widthActual][widthActual];
   for(int i = 0; i < widthActual; i++){
     for(int j = 0; j < widthActual; j++){
-      //System.out.print(int(random(2)));
-      if (int(random(40)) == 0){
-        friends[i][j] = true;
-      } else{
-        friends[i][j] = false;
+      if (int(random(dotProbabilty)) == 0){
+        friends.add(new Friend(i,j));
       }
     }
   }
   drawFriends();
-  
-  test();
+  //test();
+  //testExponentialIncrease();
 }
 
 void draw() {
-  background(#ffffff);
+  scale(scale);
+  if (!drawPath) background(#ffffff);
+  friends = getNewPositions(friends);
+  drawFriends();
 }
 
 public void drawFriends() {
-   for(int i = 0; i < friends.length; i++){
-    for(int j = 0; j < friends[0].length; j++){
-      if (friends[i][j] == true) {
-        point(i,j);
-      }
-    }
+  for(int i = 0; i < friends.size(); i++){
+      Friend friend = friends.get(i);
+      square(friend.x, friend.y, 1);
+      //point(friend.x, friend.y);
   }
 }
 
-public float circular_mean(ArrayList<Float> angles, ArrayList<Float> weights ){
+public float circular_mean(ArrayList<Float> angles, ArrayList<Float> weights){
     float x = 0, y = 0;
-    
-    for (int angle = 0, weight = 0; angle < angles.size(); angle++, weight++){
-        x += cos(radians(angles.get(angle))) * weights.get(weight);
-        y += sin(radians(angles.get(angle))) * weights.get(weight);
-    }
-    
+    for (int i = 0; i < angles.size(); i++){
+        x += cos(angles.get(i)) * weights.get(i);
+        y += sin(angles.get(i)) * weights.get(i);
+    } 
     float mean = degrees(atan2(y,x));
-    
-    
-    /*
-    for angle, weight in zip(angles, weights):
-        x += math.cos(math.radians(angle)) * weight
-        y += math.sin(math.radians(angle)) * weight
-
-    mean = math.degrees(math.atan2(y, x))
-    */
+    if (mean < 0) {
+      mean = mean + float(360);
+    }
     return mean;
 }
 
@@ -74,7 +86,99 @@ public void test(){
   angles.add(new Float(315));
   weights.add(new Float(1));
   weights.add(new Float(1));
-  
- 
   System.out.printf("%.50f", circular_mean(angles,weights));
+}
+
+public void angleTest() {
+   int x1 = 2;
+   int y1 = 2;
+   int x2 = 1;
+   int y2 = 1;
+
+   float angle = degrees(atan2(y1 - y2, x2 - x1));
+   System.out.println(String.valueOf(angle));
+}
+
+public void testExponentialIncrease(){
+  float distance = 2;
+  float x = pow(2,10*(1/distance));
+  System.out.printf("%.50f", x);
+}
+
+public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
+  for(int i = 0; i < friends.size(); i++){
+    Friend friend = friends.get(i);
+    if (friend.clumped == true) {
+      continue;
+    }
+    ArrayList<Float> angles = new ArrayList();
+    ArrayList<Float> weights = new ArrayList();
+    int friendsInSameSpaceCounter = 0;
+    for(int j = 0; j < friends.size(); j++){
+      if (friend == friends.get(j)){ continue; }
+      if (friendsInSameSpaceCounter >= clumpThreshold) { // if too many friends occupying a single space, clump them and stop moving
+        friend.clumped = true;
+        break;
+      }
+      Friend otherFriend = friends.get(j);
+      float angle = atan2(friend.y - otherFriend.y, otherFriend.x - friend.x);
+      float distance = sqrt(pow(otherFriend.x - friend.x, 2) + pow(otherFriend.y - friend.y, 2));
+      if (distance == 0f){
+        friendsInSameSpaceCounter++;
+      } else if (distance > maxAttractionDistance){
+        continue;
+      }
+      angles.add(angle);
+      weights.add((widthActual*2)-distance);
+      //weights.add(pow(2,(1/distance)));
+    }
+    float mean = circular_mean(angles, weights);
+    
+    // right 
+    if (mean <= 22.5f) { 
+      friend.x++;
+    } 
+    // up-right 
+    else if (mean <= 67.5f) {
+      friend.x++;
+      friend.y--;
+    }
+    // up
+    else if (mean <= 112.5f) {
+      friend.y--;
+    }
+    // up-left
+    else if (mean <= 157.5) {
+      friend.x--;
+      friend.y--;
+    }
+    // left
+    else if (mean <= 202.5) {
+      friend.x--;
+    }
+    // down-left
+    else if (mean <= 247.5) {
+      friend.x--;
+      friend.y++;
+    }
+    // down
+    else if (mean <= 292.5) {
+      friend.y++;
+    } 
+    // down-right
+    else if (mean <= 337.5) {
+      friend.x++;
+      friend.y++;
+    }
+    // right (again)
+    else if (mean <= 360) {
+      friend.x++;
+    }      
+  }
+  return friends;
+}
+
+void keyPressed(){
+    if(key=='s'||key=='S')
+            saveFrame(); 
 }
