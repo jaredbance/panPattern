@@ -10,10 +10,11 @@ static float strokeWeight = 2;
 static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
-static int dotProbabilty = 100;
+static int dotProbabilty = 200;
 static int clumpThreshold = 1;
 static int maxAttractionDistance = widthActual/6;
 public boolean wait = true;
+public boolean specialPointMode = false;
 // static boolean clumpMode = false; DEPRICATED
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
@@ -23,8 +24,10 @@ public ArrayList<Friend> friends = new ArrayList();
 public HashSet<Integer> usedIDs= new HashSet();
 public static HashSet<Friend>[][] mapMemory = new HashSet[widthActual][widthActual];
 HashMap<String, Method> directionMethods = new HashMap();
+public ArrayList<Pair<Float, Float>> specialPoints = new ArrayList();
 
 public class Friend{
+  boolean special = false;
   Integer id;
   int x;
   int y;
@@ -134,19 +137,24 @@ void setup(){
   for(int i = 0; i < widthActual; i++){
     for(int j = 0; j < widthActual; j++){
       mapMemory[i][j] = new HashSet<Friend>();
-      if (int(random(dotProbabilty)) == 0){
-        Friend friend = new Friend(i,j);
-        friends.add(friend);
-        mapMemory[i][j].add(friend);
-      }
     }
   }
   
-  
+  for(int i = 0; i < widthActual; i++){
+    for(int j = 0; j < widthActual; j++){
+      if ((i == 100 && j == 100) || int(random(dotProbabilty)) == 0){
+        Friend friend = new Friend(i,j);
+        friends.add(friend);
+        mapMemory[i][j].add(friend);
+        if (specialPointMode && i == 100 && j == 100){
+          friend.special = true;
+        }
+      }
+    }
+  }
   for (Method m : Directions.class.getDeclaredMethods()){
     directionMethods.put(m.getName(),m);
   }
-  
   drawFriends();
   //test();
   //testExponentialIncrease();
@@ -154,18 +162,14 @@ void setup(){
   
 void draw() {
   if (wait){
-    try{
-      Thread.sleep(500);
-    } catch (Exception e){
-    }
+    try{Thread.sleep(500);}catch(Exception e){}
     wait = false;
   }
-  
   scale(scale);
   if (!drawPath) background(#ffffff);
+  Collections.shuffle(friends);
   friends = getNewPositions(friends);
   drawFriends();
-  
   //saveFrame("frames/####.tif");
 }
 
@@ -174,7 +178,17 @@ public void drawFriends() {
       Friend friend = friends.get(i);
       //square(friend.x, friend.y, 1);
       point(friend.x, friend.y);
+      if (friend.special){
+        specialPoints.add(new Pair<Float, Float>(float(friend.x), float(friend.y)));
+      }
   }
+  stroke(0,128,0);
+  strokeWeight(1);
+  for(Pair pair : specialPoints){
+    point((Float) pair.getKey(), (Float) pair.getValue());
+  }
+  strokeWeight(strokeWeight);
+  stroke(0,0,0);
 }
 
 public float circular_mean(ArrayList<Float> angles, ArrayList<Float> weights){
@@ -217,7 +231,7 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
         /* DEPRICATED
         friendsInSameSpaceCounter++;
         */
-        continue;
+        //continue;
       } else if (distance > maxAttractionDistance){
         continue;
       }
@@ -239,7 +253,6 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
 public void moveFriend(float meanAngle, Friend friend) {
    ArrayList<String> directions = new ArrayList(Arrays.asList("right", "upRight", "up", "upLeft", "left", "downLeft"
     , "down", "downRight"));
-   
    int oldX = friend.x;
    int oldY = friend.y;
    boolean hasBeenBlockedOnce = false;
@@ -252,7 +265,6 @@ public void moveFriend(float meanAngle, Friend friend) {
      } else {
        direction = directions.get(quadrant);
      }
-     
      Method m = directionMethods.get(direction);
      Boolean result = null;
      try{
@@ -266,27 +278,29 @@ public void moveFriend(float meanAngle, Friend friend) {
        System.out.print(e);
      }
      
-     if (result.equals(true)){
-       break;
-     } else {
-       
-       if (!hasBeenBlockedOnce){
-         hasBeenBlockedOnce = true;
-         int[] backwardDirectionsToRemove = {quadrant+3,quadrant+4,quadrant+5};
-         ArrayList<String> directionsToRemove = new ArrayList(); 
-         for (int i = 0; i < backwardDirectionsToRemove.length; i++){
-           if (backwardDirectionsToRemove[i] > 7) {
-             backwardDirectionsToRemove[i] = backwardDirectionsToRemove[i] - 7;
-           }
-           directionsToRemove.add(directions.get(backwardDirectionsToRemove[i]));
-         }
-         directions.removeAll(directionsToRemove);
-       }
-       directions.remove(direction);
-       if (directions.size() == 0) {
+     try{
+       if (result.equals(true)){
          break;
+       } else {
+         if (!hasBeenBlockedOnce){
+           hasBeenBlockedOnce = true;
+           int[] backwardDirectionsToRemove = {quadrant+3,quadrant+4,quadrant+5};
+           ArrayList<String> directionsToRemove = new ArrayList(); 
+           for (int i = 0; i < backwardDirectionsToRemove.length; i++){
+             if (backwardDirectionsToRemove[i] > 7) {
+               backwardDirectionsToRemove[i] = backwardDirectionsToRemove[i] - 7;
+             }
+             directionsToRemove.add(directions.get(backwardDirectionsToRemove[i]));
+           }
+           directions.removeAll(directionsToRemove);
+         }
+         
+         directions.remove(direction);
+         if (directions.size() == 0) {
+           break;
+         }
        }
-     }
+     } catch (Exception e){ }
    }
    mapMemory[oldX][oldY].remove(friend);
    mapMemory[friend.x][friend.y].add(friend);
