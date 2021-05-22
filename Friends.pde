@@ -227,8 +227,6 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
       //weights.add(pow(2,(1/distance)));
     }
     float mean = circular_mean(angles, weights);
-    int oldX = friend.x;
-    int oldY = friend.y; 
     // do nothing if no friends nearby
     if (angles.size() == 0) {
       // do nothing 
