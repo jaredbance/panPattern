@@ -11,6 +11,7 @@ static int slowModeFrameRate = 5;
 static int dotProbabilty = 100;
 static int clumpThreshold = 3;
 static int maxAttractionDistance = widthActual/6;
+public boolean wait = true;
 // static boolean clumpMode = false; DEPRICATED
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
@@ -62,8 +63,13 @@ void setup() {
   //test();
   //testExponentialIncrease();
 }
-
+  
 void draw() {
+  if (wait){
+    delay(1000);
+    wait = false;
+  }
+  
   scale(scale);
   if (!drawPath) background(#ffffff);
   friends = getNewPositions(friends);
@@ -173,7 +179,7 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
     // down
     else if (mean <= 292.5) {
       if (mapMemory[friend.x][friend.y+1].size() >= clumpThreshold) continue;
-      friend.y++;
+      friend.y++; //<>//
     } 
     // down-right
     else if (mean <= 337.5) {
