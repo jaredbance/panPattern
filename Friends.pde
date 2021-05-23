@@ -2,38 +2,41 @@ import java.util.*;
 import javafx.util.*;
 import java.lang.reflect.*;
 
+// change conditions for clump
+// add more directions
+
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
-static int scale = 4;
-static int widthActual = 200;
-static float strokeWeight = 2;
+static int scale = 6;
+static int widthActual = 100;
+static float strokeWeight = 1;
 static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
-static int dotProbabilty = 200;
+static int dotProbabilty = 10;
 static int clumpThreshold = 1;
-static int maxAttractionDistance = widthActual/6;
+static int maxAttractionDistance = widthActual/8; //6
 public boolean wait = true;
-public boolean specialPointMode = false;
-// static boolean clumpMode = false; DEPRICATED
+public boolean specialPointMode = true;
+static boolean clumpMode = true; 
+static int numberOfAllowedClumpParticles = 900; //800
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 
 public int widthScaled = scale * widthActual;
 public ArrayList<Friend> friends = new ArrayList();
 public HashSet<Integer> usedIDs= new HashSet();
-public static HashSet<Friend>[][] mapMemory = new HashSet[widthActual][widthActual];
+public static HashSet<Friend>[][] mapMemory = new HashSet[widthActual+500][widthActual+500];
 HashMap<String, Method> directionMethods = new HashMap();
 public ArrayList<Pair<Float, Float>> specialPoints = new ArrayList();
+public int clumpCounter = 0;
 
 public class Friend{
   boolean special = false;
   Integer id;
   int x;
   int y;
-  /* DEPRICATED
   boolean clumped = false;
-  */
   public Friend(int x, int y){
     id = int(random(1000000));
     while(usedIDs.contains(id)){
@@ -104,7 +107,7 @@ public static class Directions{
     }
   }
   public static boolean down(Friend friend){
-    if (mapMemory[friend.x][friend.y+1].size() >= clumpThreshold){
+    if ( mapMemory[friend.x][friend.y+1].size() >= clumpThreshold){
       return false;
     }
     else {
@@ -133,13 +136,11 @@ void setup(){
   if (slowMode) frameRate(slowModeFrameRate);
   background(#ffffff);
   strokeWeight(strokeWeight);
-  
-  for(int i = 0; i < widthActual; i++){
-    for(int j = 0; j < widthActual; j++){
+  for(int i = 0; i < widthActual+500; i++){
+    for(int j = 0; j < widthActual+500; j++){
       mapMemory[i][j] = new HashSet<Friend>();
     }
   }
-  
   for(int i = 0; i < widthActual; i++){
     for(int j = 0; j < widthActual; j++){
       if ((i == 100 && j == 100) || int(random(dotProbabilty)) == 0){
@@ -164,6 +165,10 @@ void draw() {
   if (wait){
     try{Thread.sleep(500);}catch(Exception e){}
     wait = false;
+  }
+  if (clumpCounter >= numberOfAllowedClumpParticles){
+    maxAttractionDistance = widthActual / 3;
+    drawPath = true;
   }
   scale(scale);
   if (!drawPath) background(#ffffff);
@@ -207,31 +212,23 @@ public float circular_mean(ArrayList<Float> angles, ArrayList<Float> weights){
 public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
   for(int i = 0; i < friends.size(); i++){
     Friend friend = friends.get(i);
-    /* DEPRICATED
     if (clumpMode == true && friend.clumped == true) {
       continue;
     }
-    */
     ArrayList<Float> angles = new ArrayList();
     ArrayList<Float> weights = new ArrayList();
-    /* DEPRICATED
     int friendsInSameSpaceCounter = 0;
-    */
     for(int j = 0; j < friends.size(); j++){
       if (friend == friends.get(j)) continue; 
-      /* DEPRICATED
       if (clumpMode == true && friendsInSameSpaceCounter >= clumpThreshold) { // if too many friends occupying a single space, clump them and stop moving
-        friend.clumped = true;
-        break;
+        //friend.clumped = true;
+        //break;
       }
-      */
       Friend otherFriend = friends.get(j);
       float distance = sqrt(pow(otherFriend.x - friend.x, 2) + pow(otherFriend.y - friend.y, 2));
       if (distance == 0f){
-        /* DEPRICATED
         friendsInSameSpaceCounter++;
-        */
-        //continue;
+        continue;
       } else if (distance > maxAttractionDistance){
         continue;
       }
@@ -297,6 +294,11 @@ public void moveFriend(float meanAngle, Friend friend) {
          
          directions.remove(direction);
          if (directions.size() == 0) {
+           if (clumpMode == true && clumpCounter <= numberOfAllowedClumpParticles){
+             friend.clumped = true;
+             clumpCounter++;
+           }
+           
            break;
          }
        }
