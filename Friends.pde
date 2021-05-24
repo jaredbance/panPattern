@@ -8,17 +8,18 @@ import java.lang.reflect.*;
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 static int scale = 6;
-static int widthActual = 100;
+static int widthActual = 200;
 static float strokeWeight = 1;
 static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
-static int dotProbabilty = 10;
+static int dotProbabilty = 100;
 static int clumpThreshold = 1;
-static int maxAttractionDistance = widthActual/8; //6
+static int maxAttractionDistance = widthActual; //6
 public boolean wait = true;
 public boolean specialPointMode = true;
-static boolean clumpMode = true; 
+public int specialPointPosition = 50;
+static boolean clumpMode = false; 
 static int numberOfAllowedClumpParticles = 900; //800
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
@@ -27,7 +28,6 @@ public int widthScaled = scale * widthActual;
 public ArrayList<Friend> friends = new ArrayList();
 public HashSet<Integer> usedIDs= new HashSet();
 public static HashSet<Friend>[][] mapMemory = new HashSet[widthActual+500][widthActual+500];
-HashMap<String, Method> directionMethods = new HashMap();
 public ArrayList<Pair<Float, Float>> specialPoints = new ArrayList();
 public int clumpCounter = 0;
 
@@ -48,85 +48,6 @@ public class Friend{
   }
 }
 
-public static class Directions{
-  public static boolean right(Friend friend){
-    if (mapMemory[friend.x+1][friend.y].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.x++;
-      return true;
-    }
-  }
-  public static boolean upRight(Friend friend){
-    if (mapMemory[friend.x+1][friend.y-1].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.x++;
-      friend.y--;
-      return true;
-    }
-  }
-  public static boolean up(Friend friend) {
-    if (mapMemory[friend.x][friend.y-1].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.y--;
-      return true;
-    }
-  }
-  public static boolean upLeft(Friend friend){
-    if (mapMemory[friend.x-1][friend.y-1].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.x--;
-      friend.y--;
-      return true;
-    }
-  }
-  public static boolean left(Friend friend){
-    if (mapMemory[friend.x-1][friend.y].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.x--;
-      return true;
-    }
-  }
-  public static boolean downLeft(Friend friend){
-    if (mapMemory[friend.x-1][friend.y+1].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.x--;
-      friend.y++;
-      return true;
-    }
-  }
-  public static boolean down(Friend friend){
-    if ( mapMemory[friend.x][friend.y+1].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.y++;
-      return true;
-    }
-  }
-  public static boolean downRight(Friend friend){
-    if (mapMemory[friend.x+1][friend.y+1].size() >= clumpThreshold){
-      return false;
-    }
-    else {
-      friend.x++;
-      friend.y++;
-      return true;
-    }
-  }
-}
-
 void settings(){
   size(widthScaled, widthScaled);
 }
@@ -143,18 +64,15 @@ void setup(){
   }
   for(int i = 0; i < widthActual; i++){
     for(int j = 0; j < widthActual; j++){
-      if ((i == 100 && j == 100) || int(random(dotProbabilty)) == 0){
+      if ((i == specialPointPosition && j == specialPointPosition) || int(random(dotProbabilty)) == 0){
         Friend friend = new Friend(i,j);
         friends.add(friend);
         mapMemory[i][j].add(friend);
-        if (specialPointMode && i == 100 && j == 100){
+        if (specialPointMode && i == specialPointPosition && j == specialPointPosition){
           friend.special = true;
         }
       }
     }
-  }
-  for (Method m : Directions.class.getDeclaredMethods()){
-    directionMethods.put(m.getName(),m);
   }
   drawFriends();
   //test();
@@ -220,10 +138,6 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
     int friendsInSameSpaceCounter = 0;
     for(int j = 0; j < friends.size(); j++){
       if (friend == friends.get(j)) continue; 
-      if (clumpMode == true && friendsInSameSpaceCounter >= clumpThreshold) { // if too many friends occupying a single space, clump them and stop moving
-        //friend.clumped = true;
-        //break;
-      }
       Friend otherFriend = friends.get(j);
       float distance = sqrt(pow(otherFriend.x - friend.x, 2) + pow(otherFriend.y - friend.y, 2));
       if (distance == 0f){
@@ -248,61 +162,75 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
 }
 
 public void moveFriend(float meanAngle, Friend friend) {
-   ArrayList<String> directions = new ArrayList(Arrays.asList("right", "upRight", "up", "upLeft", "left", "downLeft"
-    , "down", "downRight"));
+   ArrayList<Pair<String,Pair<Integer,Integer>>> directions = new ArrayList(Arrays.asList(
+     new Pair("right", new Pair(1,0)), 
+     new Pair("upRight", new Pair(1,-1)), 
+     new Pair("up", new Pair(0,-1)), 
+     new Pair("upLeft", new Pair(-1,-1)), 
+     new Pair("left", new Pair(-1,0)), 
+     new Pair("downLeft", new Pair(-1, +1)), 
+     new Pair("down", new Pair(0, +1)), 
+     new Pair("downRight", new Pair(+1, +1))
+   ));
    int oldX = friend.x;
    int oldY = friend.y;
    boolean hasBeenBlockedOnce = false;
    while (true){
      float angleBetweenDirections = 360f / float(directions.size());
      int quadrant = ceil((meanAngle/(angleBetweenDirections) - 0.5)); 
-     String direction;
+     Pair<String,Pair<Integer,Integer>> direction;
      if (quadrant < 0 || quadrant == directions.size()) {
        direction = directions.get(0);
      } else {
        direction = directions.get(quadrant);
      }
-     Method m = directionMethods.get(direction);
-     Boolean result = null;
-     try{
-       //result = (Boolean) m.invoke(Directions.class.newInstance(), friend);
-       result = (Boolean) m.invoke(null, friend);
-     }
-     catch(InvocationTargetException e){
-       e.printStackTrace();
-     }
-     catch(Exception e){
-       System.out.print(e);
-     }
      
-     try{
-       if (result.equals(true)){
-         break;
-       } else {
-         if (!hasBeenBlockedOnce){
-           hasBeenBlockedOnce = true;
-           int[] backwardDirectionsToRemove = {quadrant+3,quadrant+4,quadrant+5};
-           ArrayList<String> directionsToRemove = new ArrayList(); 
-           for (int i = 0; i < backwardDirectionsToRemove.length; i++){
-             if (backwardDirectionsToRemove[i] > 7) {
-               backwardDirectionsToRemove[i] = backwardDirectionsToRemove[i] - 7;
-             }
-             directionsToRemove.add(directions.get(backwardDirectionsToRemove[i]));
+     Boolean result;
+     if (mapMemory[friend.x + direction.getValue().getKey()][friend.y + direction.getValue().getValue()].size() >= clumpThreshold){
+       result = false;
+     }
+     else {
+       friend.x += direction.getValue().getKey();
+       friend.y += direction.getValue().getValue();
+       result = true;
+     }
+   
+     if (result.equals(true)){
+       break;
+     } else {
+       if (!hasBeenBlockedOnce){
+         hasBeenBlockedOnce = true;
+         int[] backwardDirectionsToRemove = {quadrant+3,quadrant+4,quadrant+5};
+         ArrayList<Pair<String,Pair<Integer,Integer>>> directionsToRemove = new ArrayList(); 
+         for (int i = 0; i < backwardDirectionsToRemove.length; i++){
+           if (backwardDirectionsToRemove[i] > 7) {
+             backwardDirectionsToRemove[i] = backwardDirectionsToRemove[i] - 7;
            }
-           directions.removeAll(directionsToRemove);
+           directionsToRemove.add(directions.get(backwardDirectionsToRemove[i]));
+         }
+         directions.removeAll(directionsToRemove);
+       }
+       
+       directions.remove(direction);
+       if (directions.size() == 0) {
+         if (clumpMode == true && clumpCounter <= numberOfAllowedClumpParticles){
+           friend.clumped = true;
+           clumpCounter++;
          }
          
-         directions.remove(direction);
-         if (directions.size() == 0) {
-           if (clumpMode == true && clumpCounter <= numberOfAllowedClumpParticles){
-             friend.clumped = true;
-             clumpCounter++;
-           }
-           
-           break;
-         }
+         ////////////////
+         ////////////////
+         
+         // switch places at random with neighbor 
+         
+         
+         ////////////////
+         ////////////////
+         
+         break;
        }
-     } catch (Exception e){ }
+     }
+     
    }
    mapMemory[oldX][oldY].remove(friend);
    mapMemory[friend.x][friend.y].add(friend);
