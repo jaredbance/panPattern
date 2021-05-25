@@ -15,10 +15,12 @@ static int dotProbabilty = 10;
 static int clumpThreshold = 1;
 static int maxAttractionDistance_s = widthActual/8; //6
 public boolean wait_s = true;
+public int waitTime = 500;
 public boolean specialPointMode = false;
 public int specialPointPosition = 50;
 static boolean clumpMode = true; 
 static int numberOfAllowedClumpParticles = 850; //800
+static int colorMode = 1;
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 
@@ -42,6 +44,11 @@ public boolean drawPath;
 public int maxAttractionDistance;
 public boolean wait;
 public boolean firstRun = true;
+public Integer waitCount;
+public colorMode[] colorModes = {
+  new colorMode(color(40,40,40), color(240,240,240)),
+  new colorMode(color(255), color(0))
+};
 
 public class Friend{
   boolean special = false;
@@ -60,11 +67,21 @@ public class Friend{
   }
 }
 
+public class colorMode{
+  color bgColor;
+  color strokeColor;
+  public colorMode(color bgColor, color strokeColor){
+    this.bgColor = bgColor;
+    this.strokeColor = strokeColor;
+  }
+}
+
 void settings(){
   size(widthScaled, widthScaled);
 }
 
 void setup(){
+  stroke(colorModes[colorMode].strokeColor);
   friends = new ArrayList();
   usedIDs= new HashSet();
   mapMemory= new HashSet[widthActual+500][widthActual+500];
@@ -73,12 +90,13 @@ void setup(){
   maxAttractionDistance = maxAttractionDistance_s;
   drawPath = drawPath_s;
   wait = wait_s;
+  waitCount = 0;
   if (firstRun){
     scale(scale);
     firstRun = false;
   }
   if (slowMode) frameRate(slowModeFrameRate);
-  background(#ffffff);
+  background(colorModes[colorMode].bgColor);
   strokeWeight(strokeWeight);
   for(int i = 0; i < widthActual+500; i++){
     for(int j = 0; j < widthActual+500; j++){
@@ -104,15 +122,23 @@ void setup(){
   
 void draw() {
   if (wait){
-    try{Thread.sleep(500);}catch(Exception e){}
+    try{Thread.sleep(waitTime);}catch(Exception e){}
     wait = false;
   }
+  
+  if (waitCount < 40) {
+    waitCount++;
+    //saveFrame("frames/####.tif");
+    return;
+  }
+  
   if (clumpCounter >= numberOfAllowedClumpParticles){
     maxAttractionDistance = widthActual / 3;
     drawPath = true;
   }
   scale(scale);
-  if (!drawPath) background(#ffffff);
+  stroke(colorModes[colorMode].strokeColor);
+  if (!drawPath) background(colorModes[colorMode].bgColor);;
   Collections.shuffle(friends);
   friends = getNewPositions(friends);
   drawFriends();
