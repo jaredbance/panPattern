@@ -1,6 +1,5 @@
 import java.util.*;
 import javafx.util.*;
-import java.lang.reflect.*;
 
 // create links between clumps
 
@@ -9,13 +8,13 @@ import java.lang.reflect.*;
 static int scale = 6;
 static int widthActual = 100;
 static float strokeWeight = 1;
-static boolean drawPath = false;
+static boolean drawPath_s = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
 static int dotProbabilty = 10;
 static int clumpThreshold = 1;
-static int maxAttractionDistance = widthActual/8; //6
-public boolean wait = false;
+static int maxAttractionDistance_s = widthActual/8; //6
+public boolean wait_s = true;
 public boolean specialPointMode = false;
 public int specialPointPosition = 50;
 static boolean clumpMode = true; 
@@ -24,11 +23,11 @@ static int numberOfAllowedClumpParticles = 850; //800
 ////////////////////////////////////////////////////
 
 public int widthScaled = scale * widthActual;
-public ArrayList<Friend> friends = new ArrayList();
-public HashSet<Integer> usedIDs= new HashSet();
-public static HashSet<Friend>[][] mapMemory = new HashSet[widthActual+500][widthActual+500];
-public ArrayList<Pair<Float, Float>> specialPoints = new ArrayList();
-public int clumpCounter = 0;
+public ArrayList<Friend> friends; // = new ArrayList();
+public HashSet<Integer> usedIDs; //= new HashSet();
+public static HashSet<Friend>[][] mapMemory; // = new HashSet[widthActual+500][widthActual+500];
+public ArrayList<Pair<Float, Float>> specialPoints; // = new ArrayList();
+public int clumpCounter; // = 0;
 ArrayList<Pair<String,Pair<Integer,Integer>>> globalDirections = new ArrayList(Arrays.asList(
      new Pair("right", new Pair(1,0)), 
      new Pair("upRight", new Pair(1,-1)), 
@@ -39,6 +38,10 @@ ArrayList<Pair<String,Pair<Integer,Integer>>> globalDirections = new ArrayList(A
      new Pair("down", new Pair(0, 1)), 
      new Pair("downRight", new Pair(1, 1))
    ));
+public boolean drawPath;
+public int maxAttractionDistance;
+public boolean wait;
+public boolean firstRun = true;
 
 public class Friend{
   boolean special = false;
@@ -62,7 +65,18 @@ void settings(){
 }
 
 void setup(){
-  scale(scale);
+  friends = new ArrayList();
+  usedIDs= new HashSet();
+  mapMemory= new HashSet[widthActual+500][widthActual+500];
+  specialPoints = new ArrayList();
+  clumpCounter = 0;
+  maxAttractionDistance = maxAttractionDistance_s;
+  drawPath = drawPath_s;
+  wait = wait_s;
+  if (firstRun){
+    scale(scale);
+    firstRun = false;
+  }
   if (slowMode) frameRate(slowModeFrameRate);
   background(#ffffff);
   strokeWeight(strokeWeight);
@@ -227,6 +241,9 @@ public void moveFriend(float meanAngle, Friend friend) {
 void keyPressed(){
     if(key=='s'||key=='S')
             saveFrame(); 
+    if (key==' ') {
+      setup();
+    }
 }
 
 //////////////////////////////
