@@ -2,25 +2,24 @@ import java.util.*;
 import javafx.util.*;
 import java.lang.reflect.*;
 
-// change conditions for clump
-// add more directions
+// create links between clumps
 
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
-static int scale = 4;
-static int widthActual = 200;
+static int scale = 6;
+static int widthActual = 100;
 static float strokeWeight = 1;
 static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
-static int dotProbabilty = 80;
+static int dotProbabilty = 10;
 static int clumpThreshold = 1;
-static int maxAttractionDistance = widthActual/6; //6
+static int maxAttractionDistance = widthActual/8; //6
 public boolean wait = false;
 public boolean specialPointMode = false;
 public int specialPointPosition = 50;
-static boolean clumpMode = false; 
-static int numberOfAllowedClumpParticles = 900; //800
+static boolean clumpMode = true; 
+static int numberOfAllowedClumpParticles = 850; //800
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 
