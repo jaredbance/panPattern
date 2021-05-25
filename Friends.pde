@@ -7,17 +7,17 @@ import java.lang.reflect.*;
 
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
-static int scale = 6;
+static int scale = 4;
 static int widthActual = 200;
 static float strokeWeight = 1;
 static boolean drawPath = false;
 static boolean slowMode = false;
 static int slowModeFrameRate = 5;
-static int dotProbabilty = 100;
+static int dotProbabilty = 80;
 static int clumpThreshold = 1;
-static int maxAttractionDistance = widthActual; //6
-public boolean wait = true;
-public boolean specialPointMode = true;
+static int maxAttractionDistance = widthActual/6; //6
+public boolean wait = false;
+public boolean specialPointMode = false;
 public int specialPointPosition = 50;
 static boolean clumpMode = false; 
 static int numberOfAllowedClumpParticles = 900; //800
@@ -30,6 +30,16 @@ public HashSet<Integer> usedIDs= new HashSet();
 public static HashSet<Friend>[][] mapMemory = new HashSet[widthActual+500][widthActual+500];
 public ArrayList<Pair<Float, Float>> specialPoints = new ArrayList();
 public int clumpCounter = 0;
+ArrayList<Pair<String,Pair<Integer,Integer>>> globalDirections = new ArrayList(Arrays.asList(
+     new Pair("right", new Pair(1,0)), 
+     new Pair("upRight", new Pair(1,-1)), 
+     new Pair("up", new Pair(0,-1)), 
+     new Pair("upLeft", new Pair(-1,-1)), 
+     new Pair("left", new Pair(-1,0)), 
+     new Pair("downLeft", new Pair(-1, 1)), 
+     new Pair("down", new Pair(0, 1)), 
+     new Pair("downRight", new Pair(1, 1))
+   ));
 
 public class Friend{
   boolean special = false;
@@ -135,13 +145,13 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
     }
     ArrayList<Float> angles = new ArrayList();
     ArrayList<Float> weights = new ArrayList();
-    int friendsInSameSpaceCounter = 0;
+    //int friendsInSameSpaceCounter = 0;
     for(int j = 0; j < friends.size(); j++){
       if (friend == friends.get(j)) continue; 
       Friend otherFriend = friends.get(j);
       float distance = sqrt(pow(otherFriend.x - friend.x, 2) + pow(otherFriend.y - friend.y, 2));
       if (distance == 0f){
-        friendsInSameSpaceCounter++;
+        //friendsInSameSpaceCounter++;
         continue;
       } else if (distance > maxAttractionDistance){
         continue;
@@ -162,16 +172,7 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
 }
 
 public void moveFriend(float meanAngle, Friend friend) {
-   ArrayList<Pair<String,Pair<Integer,Integer>>> directions = new ArrayList(Arrays.asList(
-     new Pair("right", new Pair(1,0)), 
-     new Pair("upRight", new Pair(1,-1)), 
-     new Pair("up", new Pair(0,-1)), 
-     new Pair("upLeft", new Pair(-1,-1)), 
-     new Pair("left", new Pair(-1,0)), 
-     new Pair("downLeft", new Pair(-1, +1)), 
-     new Pair("down", new Pair(0, +1)), 
-     new Pair("downRight", new Pair(+1, +1))
-   ));
+   ArrayList<Pair<String,Pair<Integer,Integer>>> directions = (ArrayList<Pair<String,Pair<Integer,Integer>>>) globalDirections.clone();
    int oldX = friend.x;
    int oldY = friend.y;
    boolean hasBeenBlockedOnce = false;
@@ -204,33 +205,21 @@ public void moveFriend(float meanAngle, Friend friend) {
          ArrayList<Pair<String,Pair<Integer,Integer>>> directionsToRemove = new ArrayList(); 
          for (int i = 0; i < backwardDirectionsToRemove.length; i++){
            if (backwardDirectionsToRemove[i] > 7) {
-             backwardDirectionsToRemove[i] = backwardDirectionsToRemove[i] - 7;
+             backwardDirectionsToRemove[i] = backwardDirectionsToRemove[i] - 8;
            }
            directionsToRemove.add(directions.get(backwardDirectionsToRemove[i]));
          }
          directions.removeAll(directionsToRemove);
        }
-       
        directions.remove(direction);
        if (directions.size() == 0) {
          if (clumpMode == true && clumpCounter <= numberOfAllowedClumpParticles){
            friend.clumped = true;
            clumpCounter++;
-         }
-         
-         ////////////////
-         ////////////////
-         
-         // switch places at random with neighbor 
-         
-         
-         ////////////////
-         ////////////////
-         
+         } 
          break;
        }
      }
-     
    }
    mapMemory[oldX][oldY].remove(friend);
    mapMemory[friend.x][friend.y].add(friend);
