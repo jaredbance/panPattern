@@ -20,8 +20,8 @@ static final int waitTime = 500;
 static final boolean specialPointMode = false;
 static final int specialPointPosition = 50;
 static final boolean clumpMode = true; 
-static final boolean clumpColorMode = false;
-static final boolean clumpColorVectorsMode = true;
+static final boolean clumpColorMode = true;
+static final boolean clumpColorVectorsMode = false;
 static final int numberOfAllowedClumpParticles = 850; //800
 static final int colorMode = 1;
 ////////////////////////////////////////////////////
@@ -45,6 +45,7 @@ public static ArrayList<Pair<String,Pair<Integer,Integer>>> globalDirections = n
    ));
 public boolean drawPath;
 public int maxAttractionDistance;
+public Integer updatedMaxAttractionDistance;
 public boolean wait;
 public boolean firstRun = true;
 public Integer waitCount;
@@ -52,8 +53,16 @@ public ColorMode[] colorModes = {
   new ColorMode(color(40,40,40), color(240,240,240)),
   new ColorMode(color(255), color(0))
 };
-public ArrayList<HashSet<Friend>> clumps;
-public ArrayList<Integer> clumpColors;
+public ArrayList<Clump> clumps;
+//public ArrayList<Integer> clumpColors;
+
+public class Clump{
+  HashSet<Friend> members = new HashSet();
+  int clumpColor;
+  public Clump(){
+    this.clumpColor = color(random(255),random(255),random(255));
+  }
+}
 
 public class Friend{
   boolean special = false;
@@ -61,7 +70,7 @@ public class Friend{
   int x;
   int y;
   boolean clumped = false;
-  HashSet<Friend> clump = null;
+  Clump clump = null;
   public Friend(int x, int y){
     id = int(random(1000000));
     while(usedIDs.contains(id)){
@@ -102,12 +111,13 @@ void setup(){
   mapMemory= new HashSet[widthActual+500][widthActual+500];
   specialPoints = new ArrayList();
   clumps = new ArrayList();
-  clumpColors = new ArrayList();
+  //clumpColors = new ArrayList();
   clumpCounter = 0;
   maxAttractionDistance = maxAttractionDistance_s;
   drawPath = drawPath_s;
   wait = wait_s;
   waitCount = 0;
+  updatedMaxAttractionDistance = null;
   if (firstRun){
     scale(scale);
     firstRun = false;
@@ -150,7 +160,7 @@ void draw() {
   }
   scale(scale);
   if (clumpCounter >= numberOfAllowedClumpParticles){
-    maxAttractionDistance = widthActual / 3;
+    updatedMaxAttractionDistance = widthActual / 3;
     drawPath = true;
     if (clumpColorVectorsMode) drawLineBetweenClumps();
   }
@@ -184,9 +194,9 @@ public void drawFriends() {
   if (clumpColorMode){
     //strokeWeight(1);
     for(int i = 0; i < clumps.size(); i++){
-      stroke(clumpColors.get(i));
+      stroke(clumps.get(i).clumpColor);
     
-      for(Friend friend : clumps.get(i)){
+      for(Friend friend : clumps.get(i).members){
         point(friend.x, friend.y);
       }
     }
@@ -209,18 +219,24 @@ public float circular_mean(ArrayList<Float> angles, ArrayList<Float> weights){
 }
 
 public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
+  Integer localMaxAttractionDistance;
+  if (updatedMaxAttractionDistance != null){
+    localMaxAttractionDistance = updatedMaxAttractionDistance;
+  } else {
+    localMaxAttractionDistance = maxAttractionDistance;
+  }
+  
   for(int i = 0; i < friends.size(); i++){
     Friend friend = friends.get(i);
     if (clumpMode == true && friend.clumped == true) {
       
-      HashSet<Friend> nearbyClump =  checkIfClumpsAround(friend);
+      Clump nearbyClump =  checkIfClumpsAround(friend);
       if (nearbyClump != null) {
-        int nearbyClumpIndex = clumps.indexOf(nearbyClump);
-        clumps.remove(nearbyClumpIndex);
-        clumpColors.remove(nearbyClumpIndex);
-        for (Friend otherClumpFriend : nearbyClump){
+        clumps.remove(nearbyClump);
+        //clumpColors.remove(nearbyClumpIndex);
+        for (Friend otherClumpFriend : nearbyClump.members){
           otherClumpFriend.clump = friend.clump;
-          friend.clump.add(otherClumpFriend);
+          friend.clump.members.add(otherClumpFriend);
         }
       }
       continue;
@@ -235,7 +251,7 @@ public ArrayList<Friend> getNewPositions(ArrayList<Friend> friends){
       if (distance == 0f){
         //friendsInSameSpaceCounter++;
         continue;
-      } else if (distance > maxAttractionDistance){
+      } else if (distance > localMaxAttractionDistance){
         continue;
       }
       float angle = atan2(friend.y - otherFriend.y, otherFriend.x - friend.x);
@@ -298,15 +314,15 @@ public void moveFriend(float meanAngle, Friend friend) {
          if (clumpMode == true && clumpCounter <= numberOfAllowedClumpParticles){
            friend.clumped = true;
            clumpCounter++;
-           HashSet<Friend> nearbyClump =  checkIfClumpsAround(friend);
+           Clump nearbyClump =  checkIfClumpsAround(friend);
            if (nearbyClump == null){
-             HashSet<Friend> newClump = new HashSet();
-             newClump.add(friend);
+             Clump newClump = new Clump();
+             newClump.members.add(friend);
              friend.clump = newClump;
              clumps.add(newClump);  
-             clumpColors.add(color(random(255),random(255),random(255)));
+             //clumpColors.add(color(random(255),random(255),random(255)));
            } else {
-             nearbyClump.add(friend);
+             nearbyClump.members.add(friend);
              friend.clump = nearbyClump;
            }
          } 
@@ -318,7 +334,7 @@ public void moveFriend(float meanAngle, Friend friend) {
    mapMemory[friend.x][friend.y].add(friend);
 }
 
-public HashSet<Friend> checkIfClumpsAround(Friend friend){
+public Clump checkIfClumpsAround(Friend friend){
   //check if clumps around         
   int startX = friend.x - 1;
   int endX = friend.x + 1;
@@ -330,8 +346,8 @@ public HashSet<Friend> checkIfClumpsAround(Friend friend){
   if (endY > widthActual) endY = widthActual;
   for (int i = startX; i < endX; i++){
     for (int j = startY; j < endY; j++){
-      for (HashSet<Friend> clump : clumps){
-        if (mapMemory[i][j].size() !=0 && clump.contains(mapMemory[i][j].iterator().next()) && !clump.contains(friend)) {
+      for (Clump clump : clumps){
+        if (mapMemory[i][j].size() !=0 && clump.members.contains(mapMemory[i][j].iterator().next()) && !clump.members.contains(friend)) {
           //clump.add(friend);
           return clump;
         }
@@ -341,17 +357,17 @@ public HashSet<Friend> checkIfClumpsAround(Friend friend){
   return null;
 }
 
-public void drawLineBetweenClumps(){
+public void calculateLinesBetweenClumps(){
   ArrayList<Coordinate> clumpCoordinates = new ArrayList();
-  for(HashSet<Friend> clump : clumps) {
+  for(Clump clump : clumps) {
     int avgX = 0;
     int avgY = 0;
-    for (Friend friend : clump){
+    for (Friend friend : clump.members){
       avgX += friend.x;
       avgY += friend.y;
     }
-    avgX = round(avgX / clump.size());
-    avgY = round(avgY / clump.size());
+    avgX = round(avgX / clump.members.size());
+    avgY = round(avgY / clump.members.size());
     
     clumpCoordinates.add(new Coordinate(avgX, avgY));
   }
@@ -359,8 +375,9 @@ public void drawLineBetweenClumps(){
   stroke(0,128,0);
   for (Coordinate clumpCoordinate : clumpCoordinates){
     for (Coordinate otherClumpCoordinate : clumpCoordinates){
-      if (sqrt(pow(otherClumpCoordinate.x - clumpCoordinate.x, 2) + pow(otherClumpCoordinate.y - clumpCoordinate.y, 2)) <= maxAttractionDistance) {
-          line(clumpCoordinate.x, clumpCoordinate.y, otherClumpCoordinate.x, otherClumpCoordinate.y);
+      if (sqrt(pow(otherClumpCoordinate.x - clumpCoordinate.x, 2) + pow(otherClumpCoordinate.y - clumpCoordinate.y, 2)) <= updatedMaxAttractionDistance) {
+          if (clumpColorVectorsMode) line(clumpCoordinate.x, clumpCoordinate.y, otherClumpCoordinate.x, otherClumpCoordinate.y);
+          
       }
     }
   }
